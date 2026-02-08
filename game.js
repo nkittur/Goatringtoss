@@ -903,7 +903,7 @@
     }
 
     // ---- Throw Ring ----
-    function throwRing(swipeLength, swipeAngle) {
+    function throwRing(swipeDy, swipeAngle) {
         if (!canThrow || ringsLeft <= 0 || !isPlaying) return;
 
         canThrow = false;
@@ -913,16 +913,15 @@
         // Starting position (from player's perspective)
         const startPos = new BABYLON.Vector3(0, 1.5, -5);
 
-        // Calculate throw power from swipe length (pixels)
-        // Short swipe (~50px) → power ~0.1, long swipe (~400px) → power ~1.0
-        const screenRef = Math.min(window.innerWidth, window.innerHeight);
-        const power = Math.min(Math.max((swipeLength - 40) / (screenRef * 0.5), 0.1), 1.0);
+        // Power from upward swipe distance in pixels
+        // 20px flick → power 0, 200px drag → power 1
+        const power = Math.min(Math.max((swipeDy - 20) / 180, 0.0), 1.0);
 
         // Clamp launch angle to +-60 degrees so rings stay in the field
         const clampedAngle = Math.max(-1.05, Math.min(1.05, swipeAngle));
 
-        // Split forward speed into lateral (x) and depth (z) based on swipe angle
-        const forwardSpeed = 2 + power * 8;
+        // Forward speed: short swipe = 3, full swipe = 12
+        const forwardSpeed = 3 + power * 9;
 
         const ring = createRing(startPos);
 
@@ -930,7 +929,7 @@
             mesh: ring,
             velocity: new BABYLON.Vector3(
                 Math.sin(clampedAngle) * forwardSpeed,
-                2.5 + power * 3.5,
+                2.5 + power * 4,
                 Math.cos(clampedAngle) * forwardSpeed
             ),
             landed: false,
@@ -1021,16 +1020,13 @@
         const dx = endX - swipeStart.x;
         const dy = swipeStart.y - endY; // Inverted: swipe up = positive
 
-        if (dy < 40) return; // Must swipe upward enough
-
-        // Use swipe length (pixels) to determine throw power
-        const swipeLength = Math.sqrt(dx * dx + dy * dy);
+        if (dy < 20) return; // Must swipe upward a little
 
         // Compute real launch angle from swipe direction (radians from vertical)
-        // Swipe straight up = 0, swipe up-right = positive, up-left = negative
         const angle = Math.atan2(dx, dy);
 
-        throwRing(swipeLength, angle);
+        // Pass the upward distance directly as the power input
+        throwRing(dy, angle);
     }
 
     function updateGoatInfo(screenX) {
