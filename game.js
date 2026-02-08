@@ -922,9 +922,9 @@
         const throwData = {
             mesh: ring,
             velocity: new BABYLON.Vector3(
-                lateralOffset * 2.5,
-                5 + power * 4,
-                8 + power * 8
+                lateralOffset * 2.0,
+                3.5 + power * 2.5,
+                4 + power * 5
             ),
             landed: false,
             spinSpeed: 8 + Math.random() * 4,
