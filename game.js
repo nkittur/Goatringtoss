@@ -913,18 +913,24 @@
         // Starting position (from player's perspective)
         const startPos = new BABYLON.Vector3(0, 1.5, -5);
 
-        // Calculate throw direction from swipe
-        const power = Math.min(Math.max(swipeVelocity * 0.012, 0.4), 1.0);
-        const lateralOffset = swipeAngle * 4; // swipe angle affects left/right aim
+        // Calculate throw power from swipe speed
+        // Slow swipe (~200 px/s) → power ~0.15, fast swipe (~1200 px/s) → power ~1.0
+        const power = Math.min(Math.max((swipeVelocity - 100) / 1100, 0.1), 1.0);
+
+        // Clamp launch angle to +-60 degrees so rings stay in the field
+        const clampedAngle = Math.max(-1.05, Math.min(1.05, swipeAngle));
+
+        // Split forward speed into lateral (x) and depth (z) based on swipe angle
+        const forwardSpeed = 2 + power * 8;
 
         const ring = createRing(startPos);
 
         const throwData = {
             mesh: ring,
             velocity: new BABYLON.Vector3(
-                lateralOffset * 2.0,
-                3.5 + power * 2.5,
-                4 + power * 5
+                Math.sin(clampedAngle) * forwardSpeed,
+                2.5 + power * 3.5,
+                Math.cos(clampedAngle) * forwardSpeed
             ),
             landed: false,
             spinSpeed: 8 + Math.random() * 4,
@@ -1018,7 +1024,10 @@
 
         const elapsed = (Date.now() - swipeStartTime) / 1000;
         const velocity = Math.sqrt(dx * dx + dy * dy) / Math.max(elapsed, 0.05);
-        const angle = dx / window.innerWidth; // Normalized lateral angle
+
+        // Compute real launch angle from swipe direction (radians from vertical)
+        // Swipe straight up = 0, swipe up-right = positive, up-left = negative
+        const angle = Math.atan2(dx, dy); // clamped naturally by atan2
 
         throwRing(velocity, angle);
     }
