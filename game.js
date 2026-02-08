@@ -903,7 +903,7 @@
     }
 
     // ---- Throw Ring ----
-    function throwRing(swipeVelocity, swipeAngle) {
+    function throwRing(swipeLength, swipeAngle) {
         if (!canThrow || ringsLeft <= 0 || !isPlaying) return;
 
         canThrow = false;
@@ -913,9 +913,10 @@
         // Starting position (from player's perspective)
         const startPos = new BABYLON.Vector3(0, 1.5, -5);
 
-        // Calculate throw power from swipe speed
-        // Slow swipe (~200 px/s) → power ~0.15, fast swipe (~1200 px/s) → power ~1.0
-        const power = Math.min(Math.max((swipeVelocity - 100) / 1100, 0.1), 1.0);
+        // Calculate throw power from swipe length (pixels)
+        // Short swipe (~50px) → power ~0.1, long swipe (~400px) → power ~1.0
+        const screenRef = Math.min(window.innerWidth, window.innerHeight);
+        const power = Math.min(Math.max((swipeLength - 40) / (screenRef * 0.5), 0.1), 1.0);
 
         // Clamp launch angle to +-60 degrees so rings stay in the field
         const clampedAngle = Math.max(-1.05, Math.min(1.05, swipeAngle));
@@ -1022,14 +1023,14 @@
 
         if (dy < 40) return; // Must swipe upward enough
 
-        const elapsed = (Date.now() - swipeStartTime) / 1000;
-        const velocity = Math.sqrt(dx * dx + dy * dy) / Math.max(elapsed, 0.05);
+        // Use swipe length (pixels) to determine throw power
+        const swipeLength = Math.sqrt(dx * dx + dy * dy);
 
         // Compute real launch angle from swipe direction (radians from vertical)
         // Swipe straight up = 0, swipe up-right = positive, up-left = negative
-        const angle = Math.atan2(dx, dy); // clamped naturally by atan2
+        const angle = Math.atan2(dx, dy);
 
-        throwRing(velocity, angle);
+        throwRing(swipeLength, angle);
     }
 
     function updateGoatInfo(screenX) {
