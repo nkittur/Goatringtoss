@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Goat Ring Toss</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud-panel {
+            background: rgba(0,0,0,0.6);
+            border-radius: 12px;
+            padding: 8px 14px;
+            color: #fff;
+            font-size: 14px;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .hud-panel .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+        .hud-panel .value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        #hud-center {
+            text-align: center;
+        }
+        #rings-display {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+        .ring-icon {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #f9a825;
+            opacity: 0.4;
+        }
+        .ring-icon.available {
+            opacity: 1;
+            background: rgba(249,168,37,0.3);
+        }
+
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            color: #fff;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .overlay.hidden { display: none; }
+        .overlay h1 {
+            font-size: 36px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .overlay h2 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #f9a825;
+        }
+        .overlay p {
+            font-size: 16px;
+            margin-bottom: 8px;
+            opacity: 0.85;
+            text-align: center;
+            max-width: 320px;
+        }
+        .overlay .subtitle {
+            font-size: 13px;
+            opacity: 0.5;
+            margin-top: 8px;
+        }
+        .btn {
+            margin-top: 20px;
+            padding: 14px 40px;
+            font-size: 18px;
+            font-weight: 700;
+            border: none;
+            border-radius: 30px;
+            background: linear-gradient(135deg, #f9a825, #ff8f00);
+            color: #fff;
+            cursor: pointer;
+            pointer-events: all;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(249,168,37,0.4);
+            transition: transform 0.15s;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Score popup */
+        .score-popup {
+            position: absolute;
+            font-size: 28px;
+            font-weight: 900;
+            color: #4caf50;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 50;
+            animation: scoreFloat 1.2s ease-out forwards;
+        }
+        .score-popup.miss {
+            color: #f44336;
+        }
+        @keyframes scoreFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.4); }
+        }
+
+        /* Swipe indicator */
+        #swipe-hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* High scores table */
+        .high-scores {
+            margin-top: 12px;
+            width: 260px;
+        }
+        .high-scores h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #f9a825;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .score-row .rank { color: #f9a825; width: 24px; }
+        .score-row .name { flex: 1; }
+        .score-row .pts { color: #4caf50; font-weight: 700; }
+
+        /* Level complete stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 12px 0;
+            width: 260px;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .stat-box .stat-val {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f9a825;
+        }
+        .stat-box .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        /* Goat info tooltip */
+        #goat-info {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            border-radius: 8px;
+            padding: 6px 14px;
+            color: #fff;
+            font-size: 13px;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        #goat-info.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+        <div class="hud-panel">
+            <div class="label">Score</div>
+            <div class="value" id="hud-score">0</div>
+        </div>
+        <div class="hud-panel" id="hud-center">
+            <div class="label">Level <span id="hud-level">1</span></div>
+            <div id="rings-display"></div>
+        </div>
+        <div class="hud-panel">
+            <div class="label">Best</div>
+            <div class="value" id="hud-high">0</div>
+        </div>
+    </div>
+
+    <div id="swipe-hint" class="hidden">Swipe up to toss ring</div>
+    <div id="goat-info"></div>
+
+    <!-- Start Screen -->
+    <div class="overlay" id="start-screen">
+        <h1>Goat Ring Toss</h1>
+        <p>Swipe up to throw rings onto the goats! Different goats are worth different points.</p>
+        <p style="font-size:13px; margin-top:12px;">
+            <span style="color:#f9a825;">Billy (male)</span> - bigger, slower, fewer points<br>
+            <span style="color:#e91e63;">Nanny (female)</span> - smaller, faster, more points<br>
+            <span style="color:#9c27b0;">Kid (baby)</span> - tiny, fast, bonus points!
+        </p>
+        <div class="high-scores" id="start-high-scores"></div>
+        <button class="btn" id="btn-start">Play</button>
+        <p class="subtitle">Mobile optimized - swipe to play</p>
+    </div>
+
+    <!-- Level Intro -->
+    <div class="overlay hidden" id="level-screen">
+        <h2 id="level-title">Level 1</h2>
+        <p id="level-desc"></p>
+        <button class="btn" id="btn-level-start">Start</button>
+    </div>
+
+    <!-- Level Complete -->
+    <div class="overlay hidden" id="complete-screen">
+        <h2>Level Complete!</h2>
+        <div class="stats-grid" id="level-stats"></div>
+        <button class="btn" id="btn-next-level">Next Level</button>
+    </div>
+
+    <!-- Game Over -->
+    <div class="overlay hidden" id="gameover-screen">
+        <h1>Game Over</h1>
+        <h2 id="final-score">Score: 0</h2>
+        <p id="new-high-score" style="color:#f9a825; display:none;">New High Score!</p>
+        <div class="high-scores" id="gameover-high-scores"></div>
+        <button class="btn" id="btn-restart">Play Again</button>
+    </div>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
